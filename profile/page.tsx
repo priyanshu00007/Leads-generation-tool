@@ -3,25 +3,58 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Sparkles, User, Mail, Calendar, Globe, Search, Target, FileCheck, MessageSquare, ArrowRight, Loader2, Shield, Clock, Building2, Star, Phone, MapPin, Smartphone, Key, Check, X, Copy } from "lucide-react";
+import { Sparkles, User, Mail, Calendar, Globe, Search, Target, FileCheck, MessageSquare, ArrowRight, Loader2, Shield, Clock, Building2, Star, Phone, MapPin, Smartphone, Key, Check, X, Copy, BarChart3, Code, CheckCircle, AlertTriangle, ExternalLink, ChevronDown, ChevronUp, Hash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import * as api from "@/lib/api";
 
+type LeadPipeline = {
+  id: string;
+  name: string;
+  category: string;
+  address: string;
+  city: string;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  website: string | null;
+  rating: number | null;
+  reviewsCount: number | null;
+  projectId: string;
+  projectName: string;
+  createdAt: string;
+  audit: {
+    id: string;
+    pageSpeedScore: number;
+    hasWebsite: boolean;
+    mobileFriendly: boolean;
+    https: boolean;
+    hasSchema: boolean;
+    loadTimeMs: number;
+    gaps: string[];
+    biggestGap: string;
+    estLostRevenuePerMonth: number;
+  } | null;
+  rank: {
+    id: string;
+    score: number;
+    tier: string;
+    breakdown: Record<string, number> | null;
+  } | null;
+  builds: Array<{
+    id: string;
+    platform: string;
+    prompt: string;
+    createdAt: string;
+  }>;
+};
+
 type ProfileData = {
   user: { id: string; name: string; email: string; image: string | null; createdAt: string; updatedAt: string };
   stats: { projects: number; leads: number; audits: number; searches: number; outreach: number };
-  leads: Array<any>;
+  leads: LeadPipeline[];
   categories: string[];
   searches: Array<any>;
-};
-
-const statIcons: Record<string, React.ReactNode> = {
-  projects: <FolderOpen className="h-5 w-5" />,
-  leads: <Target className="h-5 w-5" />,
-  audits: <FileCheck className="h-5 w-5" />,
-  searches: <Search className="h-5 w-5" />,
-  outreach: <MessageSquare className="h-5 w-5" />,
 };
 
 export default function ProfilePage() {
@@ -29,6 +62,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [data, setData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expandedLead, setExpandedLead] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session) return;
@@ -51,7 +85,7 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30">
       <header className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-30">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
           <button onClick={() => router.push("/")} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <div className="h-8 w-8 rounded-md bg-primary flex items-center justify-center">
               <Sparkles className="h-4 w-4 text-primary-foreground" strokeWidth={1.5} />
@@ -59,12 +93,12 @@ export default function ProfilePage() {
             <span className="font-display text-lg">Lead <span className="text-muted-foreground">→</span> Launch</span>
           </button>
           <Button variant="outline" size="sm" onClick={() => router.push("/")}>
-            <ArrowRight className="h-3.5 w-3.5 mr-1.5 rotate-180" /> Back
+            <ArrowRight className="h-3.5 w-3.5 mr-1.5 rotate-180" /> Dashboard
           </Button>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Profile Header */}
         <div className="rounded-xl border border-border bg-card/80 backdrop-blur-sm p-6 sm:p-8 shadow-xl mb-6">
           <div className="flex items-start gap-5 flex-col sm:flex-row">
@@ -93,66 +127,232 @@ export default function ProfilePage() {
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
           {stats && Object.entries(stats).map(([key, value]) => (
             <div key={key} className="rounded-xl border border-border bg-card p-4 text-center hover:border-primary/30 transition-colors">
-              <div className="flex justify-center mb-2 text-muted-foreground">{statIcons[key]}</div>
+              <div className="flex justify-center mb-2 text-muted-foreground">
+                {key === "projects" && <Building2 className="h-5 w-5" />}
+                {key === "leads" && <Target className="h-5 w-5" />}
+                {key === "audits" && <FileCheck className="h-5 w-5" />}
+                {key === "searches" && <Search className="h-5 w-5" />}
+                {key === "outreach" && <MessageSquare className="h-5 w-5" />}
+              </div>
               <div className="text-2xl font-display font-bold tabular-nums">{value}</div>
               <div className="text-[11px] text-muted-foreground capitalize mt-0.5">{key}</div>
             </div>
           ))}
         </div>
 
-        {/* Activity Summary */}
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm mb-6">
-          <h2 className="text-lg font-display font-semibold mb-1 flex items-center gap-2">
-            <Activity className="h-4 w-4 text-muted-foreground" />
-            Activity Summary
-          </h2>
-          <p className="text-sm text-muted-foreground mb-4">Total data points tracked: <span className="font-semibold text-foreground">{total}</span></p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <SummaryCard icon={<Building2 className="h-4 w-4" />} label="Projects created" value={stats?.projects ?? 0} />
-            <SummaryCard icon={<Target className="h-4 w-4" />} label="Leads found" value={stats?.leads ?? 0} />
-            <SummaryCard icon={<Search className="h-4 w-4" />} label="Searches performed" value={stats?.searches ?? 0} />
-            <SummaryCard icon={<MessageSquare className="h-4 w-4" />} label="Outreach messages sent" value={stats?.outreach ?? 0} />
-          </div>
-        </div>
-
-        {/* Security / 2FA */}
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm mb-6">
-          <h2 className="text-lg font-display font-semibold mb-1 flex items-center gap-2">
-            <Shield className="h-4 w-4 text-muted-foreground" />
-            Security
-          </h2>
-          <p className="text-sm text-muted-foreground mb-4">Two-factor authentication adds an extra layer of security to your account.</p>
-          <MfaSetup />
-        </div>
-
-        {/* Recent Leads */}
+        {/* Pipeline Leads */}
         {data?.leads && data.leads.length > 0 && (
-          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-            <h2 className="text-lg font-display font-semibold mb-4 flex items-center gap-2">
-              <Target className="h-4 w-4 text-muted-foreground" />
-              Recent Leads
+          <div className="space-y-4 mb-6">
+            <h2 className="text-lg font-display font-semibold flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-primary" /> My Leads Pipeline
+              <span className="text-sm font-normal text-muted-foreground">({data.leads.length} total)</span>
             </h2>
-            <div className="divide-y divide-border">
-              {data.leads.slice(0, 10).map((lead: any, i: number) => (
-                <div key={i} className="py-3 flex items-start gap-3">
-                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                    <Building2 className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">{lead.name || lead.business_name}</div>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground mt-0.5">
-                      <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{lead.city || lead.address_city}</span>
-                      <span className="flex items-center gap-1">{lead.category}</span>
-                      {(lead.rating || lead.rating > 0) && <span className="flex items-center gap-1"><Star className="h-3 w-3 fill-amber-400 text-amber-400" />{Number(lead.rating ?? 0).toFixed(1)}</span>}
-                      {lead.phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{lead.phone}</span>}
+
+            {data.leads.map((lead) => {
+              const isExpanded = expandedLead === lead.id;
+              const hasAudit = !!lead.audit;
+              const hasRank = !!lead.rank;
+              const hasBuild = lead.builds && lead.builds.length > 0;
+
+              return (
+                <div key={lead.id} className="rounded-xl border border-border bg-card overflow-hidden">
+                  {/* Lead Header */}
+                  <button
+                    onClick={() => setExpandedLead(isExpanded ? null : lead.id)}
+                    className="w-full flex items-center justify-between p-4 hover:bg-muted/20 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Building2 className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm truncate">{lead.name}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">
+                          {lead.category} · {lead.city}
+                          {lead.projectName && <span> · {lead.projectName}</span>}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-[10px] text-muted-foreground/60 mt-1">
-                      Project: {lead.project_name || lead.projectName} · {new Date(lead.created_at || lead.createdAt).toLocaleDateString("en-IN")}
+                    <div className="flex items-center gap-3 shrink-0">
+                      {/* Pipeline stage indicators */}
+                      <StageDot done={true} label="Scrape" />
+                      <StageDot done={hasAudit} label="Audit" />
+                      <StageDot done={hasRank} label="Rank" />
+                      <StageDot done={hasBuild} label="Build" />
+                      <StageDot done={false} label="Reach" />
+
+                      {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
                     </div>
-                  </div>
+                  </button>
+
+                  {/* Expanded Pipeline Detail */}
+                  {isExpanded && (
+                    <div className="border-t border-border divide-y divide-border">
+                      {/* 01 · Scrape */}
+                      <PipelineSection num="01" title="Scrape" icon={Search} color="text-blue-500" bg="bg-blue-500/5" done={true}>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 text-sm">
+                          <Detail label="Name" value={lead.name} />
+                          <Detail label="Category" value={lead.category} />
+                          <Detail label="City" value={lead.city} />
+                          <Detail label="Address" value={lead.address} />
+                          {lead.phone && <Detail label="Phone" value={lead.phone} />}
+                          {lead.whatsapp && <Detail label="WhatsApp" value={lead.whatsapp} />}
+                          {lead.email && <Detail label="Email" value={lead.email} />}
+                          {lead.website && <Detail label="Website" value={lead.website} link />}
+                          {lead.rating != null && <Detail label="Rating" value={`${Number(lead.rating).toFixed(1)} ★`} />}
+                          {lead.reviewsCount != null && <Detail label="Reviews" value={Number(lead.reviewsCount).toLocaleString()} />}
+                          <Detail label="Added" value={new Date(lead.createdAt).toLocaleDateString()} />
+                        </div>
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {lead.phone && (
+                            <a href={`tel:${lead.phone}`} className="inline-flex items-center gap-1 text-xs bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 px-2.5 py-1.5 rounded-lg transition-colors">
+                              <Phone className="h-3 w-3" /> Call
+                            </a>
+                          )}
+                          {(lead.whatsapp || lead.phone) && (
+                            <a href={`https://wa.me/${(lead.whatsapp || lead.phone || "").replace(/[^0-9]/g, "")}`} target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs bg-green-500/10 text-green-600 hover:bg-green-500/20 px-2.5 py-1.5 rounded-lg transition-colors">
+                              <MessageSquare className="h-3 w-3" /> WhatsApp
+                            </a>
+                          )}
+                          {lead.email && (
+                            <a href={`mailto:${lead.email}`} className="inline-flex items-center gap-1 text-xs bg-purple-500/10 text-purple-600 hover:bg-purple-500/20 px-2.5 py-1.5 rounded-lg transition-colors">
+                              <Mail className="h-3 w-3" /> Email
+                            </a>
+                          )}
+                          {lead.website && (
+                            <a href={lead.website} target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs bg-slate-500/10 text-slate-600 hover:bg-slate-500/20 px-2.5 py-1.5 rounded-lg transition-colors">
+                              <Globe className="h-3 w-3" /> Visit Site
+                            </a>
+                          )}
+                        </div>
+                      </PipelineSection>
+
+                      {/* 02 · Audit */}
+                      <PipelineSection num="02" title="Audit" icon={FileCheck} color="text-amber-500" bg="bg-amber-500/5" done={hasAudit}>
+                        {hasAudit ? (
+                          <>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                              <Detail label="PageSpeed" value={String(lead.audit!.pageSpeedScore ?? "—")} />
+                              <Detail label="Has Website" value={lead.audit!.hasWebsite ? "Yes" : "No"} />
+                              <Detail label="Mobile Friendly" value={lead.audit!.mobileFriendly ? "Yes" : "No"} />
+                              <Detail label="HTTPS" value={lead.audit!.https ? "Yes" : "No"} />
+                              <Detail label="Schema Markup" value={lead.audit!.hasSchema ? "Yes" : "No"} />
+                              <Detail label="Load Time" value={lead.audit!.loadTimeMs ? `${lead.audit!.loadTimeMs}ms` : "—"} />
+                              <Detail label="Est. Lost Rev./mo" value={lead.audit!.estLostRevenuePerMonth ? `₹${Number(lead.audit!.estLostRevenuePerMonth).toLocaleString("en-IN")}` : "—"} />
+                            </div>
+                            {lead.audit!.biggestGap && (
+                              <div className="mt-3 p-3 rounded-lg bg-rose-500/5 border border-rose-500/20">
+                                <p className="text-xs font-medium text-rose-600 mb-1">Biggest Gap</p>
+                                <p className="text-xs text-muted-foreground">{lead.audit!.biggestGap}</p>
+                              </div>
+                            )}
+                            {lead.audit!.gaps && lead.audit!.gaps.length > 0 && (
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                {lead.audit!.gaps.slice(0, 5).map((g: string, i: number) => (
+                                  <span key={i} className="text-[10px] bg-rose-500/10 text-rose-600 px-2 py-0.5 rounded-full">{g}</span>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No audit data yet. Run Phase 2 to audit this lead's website.</p>
+                        )}
+                      </PipelineSection>
+
+                      {/* 03 · Rank */}
+                      <PipelineSection num="03" title="Rank" icon={BarChart3} color="text-violet-500" bg="bg-violet-500/5" done={hasRank}>
+                        {hasRank ? (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-4">
+                              <div className="text-3xl font-display font-bold">{lead.rank!.score}<span className="text-sm font-normal text-muted-foreground">/100</span></div>
+                              <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                                lead.rank!.tier === "Hot Lead" ? "bg-emerald-500/10 text-emerald-600" :
+                                lead.rank!.tier === "Warm Lead" ? "bg-blue-500/10 text-blue-600" :
+                                lead.rank!.tier === "Qualified" ? "bg-amber-500/10 text-amber-600" :
+                                "bg-muted text-muted-foreground"
+                              }`}>
+                                {lead.rank!.tier}
+                              </span>
+                            </div>
+                            {lead.rank!.breakdown && (
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                {Object.entries(lead.rank!.breakdown).map(([k, v]) => (
+                                  <div key={k} className="rounded-lg bg-muted/30 p-2">
+                                    <div className="text-[10px] text-muted-foreground capitalize">{k.replace(/([A-Z])/g, " $1").trim()}</div>
+                                    <div className="text-sm font-semibold tabular-nums">{v}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No ranking data yet. Run Phase 3 to rank this lead.</p>
+                        )}
+                      </PipelineSection>
+
+                      {/* 04 · Build */}
+                      <PipelineSection num="04" title="Build" icon={Code} color="text-indigo-500" bg="bg-indigo-500/5" done={hasBuild}>
+                        {hasBuild ? (
+                          <div className="space-y-3">
+                            {lead.builds.map((b) => (
+                              <details key={b.id} className="rounded-lg border border-border bg-muted/20">
+                                <summary className="flex items-center justify-between p-3 cursor-pointer text-sm font-medium hover:bg-muted/30 rounded-lg">
+                                  <span className="flex items-center gap-2">
+                                    <Hash className="h-3.5 w-3.5 text-muted-foreground" />
+                                    {b.platform}
+                                  </span>
+                                  <span className="text-[10px] text-muted-foreground">{new Date(b.createdAt).toLocaleDateString()}</span>
+                                </summary>
+                                <div className="border-t border-border p-3">
+                                  <pre className="text-[11px] font-mono whitespace-pre-wrap max-h-60 overflow-y-auto text-muted-foreground">{b.prompt}</pre>
+                                  <button
+                                    onClick={() => { navigator.clipboard.writeText(b.prompt); toast.success("Prompt copied"); }}
+                                    className="mt-2 text-xs text-primary hover:underline inline-flex items-center gap-1"
+                                  >
+                                    <Copy className="h-3 w-3" /> Copy
+                                  </button>
+                                </div>
+                              </details>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No build prompts yet. Run Phase 4 to generate a website.</p>
+                        )}
+                      </PipelineSection>
+
+                      {/* 05 · Outreach */}
+                      <PipelineSection num="05" title="Outreach" icon={MessageSquare} color="text-rose-500" bg="bg-rose-500/5" done={false}>
+                        <div className="flex items-center gap-3">
+                          <a
+                            href={`/api/outreach?leadId=${lead.id}`}
+                            className="inline-flex items-center gap-1.5 text-xs bg-primary/10 text-primary hover:bg-primary/20 px-3 py-2 rounded-lg transition-colors"
+                          >
+                            <MessageSquare className="h-3.5 w-3.5" /> Draft Outreach
+                          </a>
+                          {lead.phone && (
+                            <a href={`tel:${lead.phone}`} className="inline-flex items-center gap-1.5 text-xs bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 px-3 py-2 rounded-lg transition-colors">
+                              <Phone className="h-3.5 w-3.5" /> Call
+                            </a>
+                          )}
+                        </div>
+                      </PipelineSection>
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
+              );
+            })}
+          </div>
+        )}
+
+        {data?.leads && data.leads.length === 0 && (
+          <div className="rounded-xl border border-border bg-card p-12 text-center mb-6">
+            <Building2 className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-muted-foreground">No leads yet. Create a project and scrape some leads!</p>
+            <Button variant="outline" size="sm" className="mt-4" onClick={() => router.push("/")}>
+              <Target className="h-3.5 w-3.5 mr-1.5" /> Start Scraping
+            </Button>
           </div>
         )}
       </main>
@@ -160,153 +360,47 @@ export default function ProfilePage() {
   );
 }
 
-function SummaryCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
+function StageDot({ done, label }: { done: boolean; label: string }) {
   return (
-    <div className="rounded-lg border border-border/60 bg-muted/20 p-3 flex items-center gap-3">
-      <div className="text-muted-foreground">{icon}</div>
-      <div>
-        <div className="text-lg font-semibold tabular-nums">{value}</div>
-        <div className="text-[11px] text-muted-foreground">{label}</div>
-      </div>
+    <div className="flex items-center gap-1">
+      <div className={`h-2 w-2 rounded-full ${done ? "bg-emerald-500" : "bg-muted-foreground/30"}`} />
+      <span className={`text-[9px] hidden sm:inline ${done ? "text-emerald-600 font-medium" : "text-muted-foreground/50"}`}>{label}</span>
     </div>
   );
 }
 
-function Activity(props: any) { return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>; }
-function FolderOpen(props: any) { return <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M2 6a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2Z" /><path d="M2 8h20" /></svg>; }
-
-function MfaSetup() {
-  const [mfa, setMfa] = useState<{ enabled: boolean } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [setup, setSetup] = useState<{ secret: string; qrCode: string; otpauth: string } | null>(null);
-  const [totpCode, setTotpCode] = useState("");
-  const [showSetup, setShowSetup] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    fetch("/api/profile/mfa").then((r) => r.json()).then(setMfa).catch(() => {}).finally(() => setLoading(false));
-  }, []);
-
-  async function handleSetup() {
-    setBusy(true); setMessage("");
-    try {
-      const res = await fetch("/api/profile/mfa", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "setup" }),
-      });
-      const data = await res.json();
-      if (res.ok) { setSetup(data); setShowSetup(true); }
-      else setMessage(data.error);
-    } catch { setMessage("Failed to start setup"); }
-    finally { setBusy(false); }
-  }
-
-  async function handleEnable() {
-    if (totpCode.length !== 6) return;
-    setBusy(true); setMessage("");
-    try {
-      const res = await fetch("/api/profile/mfa", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "enable", token: totpCode }),
-      });
-      const data = await res.json();
-      if (res.ok) { setMfa({ enabled: true }); setShowSetup(false); setSetup(null); setTotpCode(""); toast.success("2FA enabled"); }
-      else setMessage(data.error);
-    } catch { setMessage("Failed to enable 2FA"); }
-    finally { setBusy(false); }
-  }
-
-  async function handleDisable() {
-    if (totpCode.length !== 6) return;
-    setBusy(true); setMessage("");
-    try {
-      const res = await fetch("/api/profile/mfa", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "disable", token: totpCode }),
-      });
-      const data = await res.json();
-      if (res.ok) { setMfa({ enabled: false }); setTotpCode(""); toast.success("2FA disabled"); }
-      else setMessage(data.error);
-    } catch { setMessage("Failed to disable 2FA"); }
-    finally { setBusy(false); }
-  }
-
-  if (loading) return <div className="h-8 flex items-center"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>;
-
-  if (showSetup && setup) {
-    return (
-      <div className="space-y-4">
-        {message && <p className="text-sm text-destructive">{message}</p>}
-        <div className="flex justify-center">
-          <img src={setup.qrCode} alt="2FA QR Code" className="rounded-lg border border-border" width={180} height={180} />
-        </div>
-        <p className="text-sm text-muted-foreground text-center">Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.)</p>
-        <div className="bg-muted/30 rounded-lg p-3 flex items-center justify-between gap-2">
-          <code className="text-xs font-mono break-all select-all">{setup.secret}</code>
-          <button onClick={() => { navigator.clipboard.writeText(setup.secret); toast.success("Copied"); }} className="shrink-0 text-muted-foreground hover:text-foreground">
-            <Copy className="h-4 w-4" />
-          </button>
-        </div>
-        <p className="text-xs text-muted-foreground text-center">Or manually enter the secret key above</p>
-        <div className="space-y-2">
-          <label className="text-xs font-medium">Enter 6-digit code to verify</label>
-          <input type="text" inputMode="numeric" placeholder="000 000" value={totpCode}
-            onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            className="w-full h-10 rounded-lg border border-border bg-background px-3 text-center text-lg tracking-[0.5em] font-mono" maxLength={6} />
-        </div>
-        <div className="flex gap-2">
-          <Button size="sm" onClick={() => { setShowSetup(false); setSetup(null); setMessage(""); }} variant="outline" className="flex-1">
-            <X className="h-3.5 w-3.5 mr-1.5" /> Cancel
-          </Button>
-          <Button size="sm" onClick={handleEnable} disabled={busy || totpCode.length !== 6} className="flex-1">
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
-            Enable 2FA
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
+function PipelineSection({ num, title, icon: Icon, color, bg, done, children }: {
+  num: string; title: string; icon: any; color: string; bg: string; done: boolean; children: React.ReactNode;
+}) {
   return (
-    <div className="space-y-4">
-      {message && <p className="text-sm text-destructive">{message}</p>}
-      {mfa?.enabled ? (
-        <>
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
-            <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
-              <Shield className="h-5 w-5 text-emerald-500" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium">2FA is enabled</div>
-              <div className="text-xs text-muted-foreground">Your account is protected with two-factor authentication</div>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs font-medium">Enter code to disable 2FA</label>
-            <input type="text" inputMode="numeric" placeholder="000 000" value={totpCode}
-              onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              className="w-full h-10 rounded-lg border border-border bg-background px-3 text-center text-lg tracking-[0.5em] font-mono" maxLength={6} />
-          </div>
-          <Button size="sm" variant="destructive" onClick={handleDisable} disabled={busy || totpCode.length !== 6}>
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <X className="h-3.5 w-3.5 mr-1.5" />}
-            Disable 2FA
-          </Button>
-        </>
+    <div className={`p-4 ${bg}`}>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-[10px] font-mono text-muted-foreground">{num}</span>
+        <Icon className={`h-4 w-4 ${color}`} />
+        <span className="text-sm font-medium">{title}</span>
+        {done ? (
+          <CheckCircle className="h-3.5 w-3.5 text-emerald-500 ml-auto" />
+        ) : (
+          <AlertTriangle className="h-3.5 w-3.5 text-muted-foreground/40 ml-auto" />
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Detail({ label, value, link }: { label: string; value: string; link?: boolean }) {
+  if (!value || value === "—") return null;
+  return (
+    <div>
+      <p className="text-[10px] text-muted-foreground">{label}</p>
+      {link ? (
+        <a href={value} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline truncate block max-w-[200px]">
+          {value.replace(/^https?:\/\//, "").slice(0, 30)}
+          <ExternalLink className="h-3 w-3 inline ml-0.5" />
+        </a>
       ) : (
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
-          <div className="h-10 w-10 rounded-full bg-amber-500/10 flex items-center justify-center">
-            <Smartphone className="h-5 w-5 text-amber-500" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium">2FA is not enabled</div>
-            <div className="text-xs text-muted-foreground">Add an extra layer of security to your account</div>
-          </div>
-          <Button size="sm" onClick={handleSetup} disabled={busy}>
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Key className="h-3.5 w-3.5 mr-1.5" />}
-            Set up
-          </Button>
-        </div>
+        <p className="text-xs font-medium truncate">{value}</p>
       )}
     </div>
   );

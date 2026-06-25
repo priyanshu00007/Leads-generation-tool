@@ -31,6 +31,8 @@ export async function GET() {
         (SELECT COUNT(*) FROM audits) AS total_audits,
         (SELECT COUNT(*) FROM searches) AS total_searches,
         (SELECT COUNT(*) FROM outreach) AS total_outreach,
+        (SELECT COUNT(*) FROM ranks) AS total_ranks,
+        (SELECT COUNT(*) FROM builds) AS total_builds,
         (SELECT COUNT(*) FROM leads WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) AS new_leads_7d,
         (SELECT COUNT(*) FROM leads WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)) AS new_leads_30d,
         (SELECT COUNT(*) FROM users WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) AS new_users_7d`
@@ -52,6 +54,24 @@ export async function GET() {
       `SELECT p.id, p.name, p.niche, p.city, p.created_at, u.name AS user_name, u.email AS user_email,
               (SELECT COUNT(*) FROM leads WHERE project_id = p.id) AS lead_count
        FROM projects p JOIN users u ON u.id = p.user_id ORDER BY p.created_at DESC LIMIT 200`
+    );
+
+    const [ranks] = await db.query<RowDataPacket[]>(
+      `SELECT r.*, l.name AS lead_name, p.name AS project_name, u.name AS user_name
+       FROM ranks r
+       JOIN leads l ON l.id = r.lead_id
+       JOIN projects p ON p.id = l.project_id
+       JOIN users u ON u.id = p.user_id
+       ORDER BY r.score DESC LIMIT 200`
+    );
+
+    const [builds] = await db.query<RowDataPacket[]>(
+      `SELECT b.*, l.name AS lead_name, p.name AS project_name, u.name AS user_name
+       FROM builds b
+       JOIN leads l ON l.id = b.lead_id
+       JOIN projects p ON p.id = l.project_id
+       JOIN users u ON u.id = p.user_id
+       ORDER BY b.created_at DESC LIMIT 200`
     );
 
     const [leads] = await db.query<RowDataPacket[]>(
@@ -104,6 +124,11 @@ export async function GET() {
       sessions,
       verification_tokens: vTokens,
       projects,
+      ranks: ranks.map((r: any) => ({
+        ...r,
+        breakdown: r.breakdown ? (() => { try { return JSON.parse(r.breakdown); } catch { return null; } })() : null,
+      })),
+      builds,
       leads: leads.map((l: any) => ({ ...l, rating: Number(Number(l.rating ?? 0).toFixed(1)) })),
       audits: audits.map((a: any) => ({
         ...a,
